@@ -33,9 +33,10 @@ Optional columns:
 Make sure you have Python 3.7+ installed.
 
 ### 1. Clone the repository
-
+```bash
 git clone https://github.com/sudofixit/TireComparisonApp.git
 cd TireComparisonApp
+
 
 python -m venv venv
 venv\Scripts\activate  # On Windows
