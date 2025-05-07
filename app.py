@@ -49,51 +49,106 @@ if file1 and file2:
 
     # --- 3. Column Mapping ---
     st.header("3. Map Columns")
+    map_col1, map_col2 = st.columns(2)
 
-    def get_mapping(df, label, file_key):
-        cols = df.columns.tolist()
+    def get_mapping(df, label, file_key, col):
+        def detect_column(cols, keywords):
+            """Find first column containing any keyword (case-insensitive)"""
+            cols_lower = [c.lower() for c in cols]
+            for keyword in keywords:
+                if keyword in cols_lower:
+                    return cols[cols_lower.index(keyword)]
+                for i, c in enumerate(cols):
+                    if keyword in c.lower():
+                        return cols[i]
+            return None
 
-        if 'Brand' not in cols:
-            manual_brand = st.text_input(
-                f"⚠️ {label} file has no 'Brand' column. Enter brand name to use:",
-                key=f"manual_brand_{label}"
+        def has_combined_pattern(size_col):
+            """Check if size column contains pattern data"""
+            if not size_col or size_col == "None":
+                return False
+            try:
+                sample = df[size_col].astype(str).str.contains(r'\d+[A-Za-z]{2,}', regex=True)
+                return sample.any()
+            except:
+                return False
+
+        with col:
+            cols = df.columns.tolist()
+            st.markdown(f"**{label} Column Mapping**")
+
+            # Brand Detection
+            if 'Brand' not in cols:
+                brand_val = st.text_input("Brand (manually enter)", key=f"manual_brand_{label}")
+                if not brand_val:
+                    st.warning("Brand name is required.")
+                    st.stop()
+                df.insert(0, 'Brand', brand_val)
+                cols.insert(0, 'Brand')
+                brand_col = 'Brand'
+            else:
+                detected_brand = detect_column(cols, ['brand'])
+                brand_col = st.selectbox(
+                    "Brand", 
+                    cols,
+                    index=cols.index(detected_brand) if detected_brand else 0,
+                    key=f"brand_{label}"
+                )
+                df['Brand'] = df[brand_col]
+
+            # Size Detection
+            size_keywords = ['size description', 'description', 'size']
+            detected_size = detect_column(cols, size_keywords)
+            size_col = st.selectbox(
+                "Size",
+                cols,
+                index=cols.index(detected_size) if detected_size else 0,
+                key=f"size_{label}"
             )
-            if not manual_brand:
-                st.warning("Brand name is required.")
-                st.stop()
-            df.insert(0, 'Brand', manual_brand)
-            cols.insert(0, 'Brand')
-            brand_col = 'Brand'
-        else:
-            st.write(f"**{label} Columns**")
-            brand_col = st.selectbox("Brand", cols, key=f"brand_{label}")
-            df['Brand'] = df[brand_col]
 
-        size_col = st.selectbox("Size", cols, key=f"size_{label}")
-        price_col = st.selectbox("Price", cols, key=f"price_{label}")
-        pattern_col = st.selectbox("Pattern (optional)", ["None"] + cols, key=f"pattern_{label}")
+            # Price Detection
+            price_priority = ['price', 'fob', 'cpt', 'cost']
+            detected_price = detect_column(cols, price_priority)
+            price_col = st.selectbox(
+                "Price",
+                cols,
+                index=cols.index(detected_price) if detected_price else 0,
+                key=f"price_{label}"
+            )
 
-        if st.button(f"💾 Save {label} Mapping", key=f"save_{label}"):
-            st.session_state[f"mapping_{file_key}"] = {
-                'brand': 'Brand',
-                'size': size_col,
-                'price': price_col,
-                'pattern': pattern_col
-            }
-            st.success("✅ Mapping saved!")
+            # Pattern Handling
+            detected_pattern = detect_column(cols, ['pattern'])
+            if has_combined_pattern(size_col):
+                pattern_col = "None"
+            else:
+                pattern_options = ["None"] + cols
+                pattern_index = pattern_options.index(detected_pattern) if detected_pattern else 0
+                pattern_col = st.selectbox(
+                    "Pattern (optional)",
+                    pattern_options,
+                    index=pattern_index,
+                    key=f"pattern_{label}"
+                )
 
-        if f"mapping_{file_key}" in st.session_state:
-            if st.checkbox(f"Use saved mapping for {label}", value=True):
-                saved = st.session_state[f"mapping_{file_key}"]
-                return df, saved['brand'], saved['size'], saved['price'], saved['pattern']
+            # Save mapping
+            if st.button(f"💾 Save {label} Mapping", key=f"save_{label}"):
+                st.session_state[f"mapping_{file_key}"] = {
+                    'brand': brand_col,
+                    'size': size_col,
+                    'price': price_col,
+                    'pattern': pattern_col
+                }
+                st.success("✅ Mapping saved!")
 
-        return df, 'Brand', size_col, price_col, pattern_col
+            if f"mapping_{file_key}" in st.session_state:
+                if st.checkbox(f"Use saved mapping for {label}", value=True):
+                    saved = st.session_state[f"mapping_{file_key}"]
+                    return df, saved['brand'], saved['size'], saved['price'], saved['pattern']
 
-    col1, col2 = st.columns(2)
-    with col1:
-        df1, brand1, size1, price1, pattern1 = get_mapping(df1, "Supplier A", file1.name)
-    with col2:
-        df2, brand2, size2, price2, pattern2 = get_mapping(df2, "Supplier B", file2.name)
+            return df, brand_col, size_col, price_col, pattern_col
+
+    df1, brand1, size1, price1, pattern1 = get_mapping(df1, "Supplier A", file1.name, map_col1)
+    df2, brand2, size2, price2, pattern2 = get_mapping(df2, "Supplier B", file2.name, map_col2)
 
     # --- 4. Comparison ---
     st.header("4. Compare and Export")
