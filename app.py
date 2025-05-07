@@ -175,7 +175,7 @@ if file1 and file2:
 
                 # --- Dynamic Column Handling ---
                 price_cols = [col for col in result.columns 
-                             if col.startswith('Price_') and col != 'Price_Diff']
+                             if col.startswith('Price_') and col not in ['Price_Diff', 'Price_Pct_Diff']]
                 
                 # --- Highlight Logic ---
                 def highlight_cheaper_price(row):
@@ -190,9 +190,12 @@ if file1 and file2:
                     return styles
 
                 st.subheader("📊 Comparison Results")
+                format_dict = {col: "{:.2f}" for col in price_cols + ['Price_Diff']}
+                format_dict['Price_Pct_Diff'] = "{:.2%}"  # Format as percentage
+
                 st.dataframe(
                     result.style
-                        .format({col: "{:.2f}" for col in price_cols + ['Price_Diff']})
+                        .format(format_dict)
                         .apply(highlight_cheaper_price, axis=1),
                     height=500
                 )
