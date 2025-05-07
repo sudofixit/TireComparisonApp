@@ -45,9 +45,15 @@ def compare_data(df1, df2):
     )
     merged['Price_Diff'] = (merged[price_cols[0]] - merged[price_cols[1]]).abs().round(2)
 
+    cheaper_prices = merged[[price_cols[0], price_cols[1]]].min(axis=1)
+
+    merged['Price_Pct_Diff'] = (merged['Price_Diff'] / cheaper_prices).round(4)
+
+
+
     return merged[['SIZE', f'PATTERN_{brand_a}', f'Price_{brand_a}',
                   f'PATTERN_{brand_b}', f'Price_{brand_b}', 
-                  'Cheaper_Brand', 'Price_Diff']]
+                  'Cheaper_Brand', 'Price_Diff', 'Price_Pct_Diff']]
 
 def download_comparison_excel(df):
     try:
@@ -65,6 +71,11 @@ def download_comparison_excel(df):
             
             if len(price_cols) != 2:
                 raise ValueError(f"Need exactly 2 price columns. Found: {price_cols}")
+            
+            if 'Price_Pct_Diff' in df.columns:
+                pct_col_idx = df.columns.get_loc('Price_Pct_Diff')
+                percent_format = workbook.add_format({'num_format': '0.00%'})
+                worksheet.set_column(pct_col_idx, pct_col_idx, None, percent_format)
 
             # Rest of the function remains the same
             for row_num in range(1, len(df)+1):
