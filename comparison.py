@@ -66,8 +66,10 @@ def download_comparison_excel(df):
             green_format = workbook.add_format({'bg_color': '#C6EFCE', 'font_color': '#006100'})
 
             # Modified: Exclude Price_Diff from price columns
+            # Modified: Exclude both Price_Diff and Price_Pct_Diff
             price_cols = [col for col in df.columns 
-                         if col.startswith('Price_') and col != 'Price_Diff']
+                        if col.startswith('Price_') 
+                        and col not in ['Price_Diff', 'Price_Pct_Diff']]
             
             if len(price_cols) != 2:
                 raise ValueError(f"Need exactly 2 price columns. Found: {price_cols}")
